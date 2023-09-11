@@ -29,6 +29,7 @@ def load(array, start=0, length=16):
         array[i] = registers[k]
         print("P"+str(i+1) + " , value " + str(registers[k]))
         k = k + 1
+
     return array
 
 async def main(client):
@@ -53,17 +54,19 @@ async def main(client):
     _logger.info("Starting server!")
     async with server:
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.100)
             #arry = [ random.randrange(100,1000) for i in range(0,max_item_groups)]
 
-            for i in range(0, 600, 100):
-                arry = load(arry, i)
+            max = 700 # 6 group 
+            for i in range(0, max, 100):
+                array = load(arry, i)
+                #asyncio.sleep(0.1)
 
             await arry_node.write_value(arry)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.WARNING)
     port = '/dev/ttyUSB0'
     client = ModbusSerialClient(
       port,

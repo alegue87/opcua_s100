@@ -86,7 +86,7 @@ async def main(client, descriptor):
         while True:
             # max = 600 # 6 group 
             for i in range(0, GROUPS_NUMBER):
-                data_list[i] = load(data_list[i], start=driveConf.getint('GROUP'+str(i+1), 'min'), length=driveConf.getint('GROUP'+str(i+1), 'max'), group=i+1)
+                data_list[i] = load(data_list[i], start=driveConf.getint('GROUP'+str(i+1), 'min')-1, length=driveConf.getint('GROUP'+str(i+1), 'max'), group=i+1)
 
             for i in range(0, GROUPS_NUMBER):
                 await save_in_node(node_list[i], data_list[i])

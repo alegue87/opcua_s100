@@ -20,40 +20,44 @@ def read(address, length, address_slave=1):
     return client.read_holding_registers(address, length, address_slave)
 
 
-def load(list, start=0, length=16):
+def load(lst, start=0, length=16, group=1):
     
     MAX_READ_LENGTH = 16
     toRead = MAX_READ_LENGTH
     if length > MAX_READ_LENGTH:
         toRead = length
     
+    param = 1
     offset = 0
     while toRead > 0:
-        index = start+offset
-        address = index+100
-        response = read(address, MAX_READ_LENGTH)
+        address = start+offset+100
+
+        if toRead < MAX_READ_LENGTH:
+            readCount = toRead
+        else:
+            readCount = MAX_READ_LENGTH
+
+        response = read(address,  readCount)
         registers = response.registers
 
         if len(registers) == 0: 
-            _logger.error('Register is empty, address ' + str(address) + ', length: ' + str(MAX_READ_LENGTH))
-            return list
+            _logger.error('Register is empty, address ' + str(address) + ', length: ' + str(readCount))
+            return lst 
 
-        k = 0
-        for i in range(index, index+MAX_READ_LENGTH):
-            list[i] = registers[k]
-            _logger.info("P"+str(i+1) + ", value " + str(registers[k]))
-            k = k + 1
-            if k == MAX_READ_LENGTH: break
+        for i in range(0, readCount):
+            lst[i] = registers[i]
+            _logger.info("P"+str(group) + '.' + str(param) + ", value " + str(registers[i]))
+            param += 1
 
-        offset += MAX_READ_LENGTH
-        toRead -= MAX_READ_LENGTH
+        offset += readCount 
+        toRead -= readCount 
 
-    return list
+    return lst 
 
 async def main(client, descriptor):
 
-    config = configparser.RawConfigParser()
-    config.read(descriptor)
+    driveConf = configparser.RawConfigParser()
+    driveConf.read(descriptor)
 
     # setup our server
     server = Server()
@@ -68,22 +72,23 @@ async def main(client, descriptor):
     MAX_ITEM_GROUPS = 100
 
     objects = server.nodes.objects
-    node_list = []
-    data_list = [[0] * MAX_ITEM_GROUPS]*config.getint('GROUPS', 'number') # groups x item (100), 6 * 100
-    for i in range(0, config.getint('GROUPS', 'number')):
-        node_list[i] = objects.add_variable('ns=2;s=base', 'Group'+str(i+1), data_list[i])
+    GROUPS_NUMBER = driveConf.getint('GROUPS', 'number')
+    node_list = [None]*GROUPS_NUMBER
+    data_list = [[0] * MAX_ITEM_GROUPS] * GROUPS_NUMBER # groups x item (100), 6 * 100
+    for i in range(0, GROUPS_NUMBER):
+        node_list[i] = await objects.add_variable('ns=2;s='+'group'+str(i+1), 'Group'+str(i+1), data_list[i])
 
     async def save_in_node(node, list):
-        node.write_value(list)
+        await node.write_value(list)
 
     _logger.info("Starting server!")
     async with server:
         while True:
             # max = 600 # 6 group 
-            for i in range(0, config.getint('GROUPS', 'number')):
-                data_list[i] = load(data_list[i], i*MAX_ITEM_GROUPS, length=config.getint('GROUP'+str(i+1), 'max'))
+            for i in range(0, GROUPS_NUMBER):
+                data_list[i] = load(data_list[i], start=driveConf.getint('GROUP'+str(i+1), 'min'), length=driveConf.getint('GROUP'+str(i+1), 'max'), group=i+1)
 
-            for i in range(0, config.getint('GROUPS', 'number')):
+            for i in range(0, GROUPS_NUMBER):
                 await save_in_node(node_list[i], data_list[i])
             
             await asyncio.sleep(0.100)
@@ -96,7 +101,7 @@ if __name__ == "__main__":
     config.read('modbus-gateway.cfg')
     
     client = ModbusSerialClient(
-      port=config.getint('Gateway', 'port'),
+      port=config.get('Gateway', 'port'),
       framer=ModbusRtuFramer,
       # timeout=10,
       # retries=3,

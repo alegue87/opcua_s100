@@ -69,7 +69,7 @@ async def main(client, descriptor):
     uri = "http://examples.freeopcua.github.io"
     #idx = await server.register_namespace(uri)
 
-    MAX_ITEM_GROUPS = 100
+    MAX_ITEM_GROUPS = config.getint('Gateway', 'max_item_groups')
 
     objects = server.nodes.objects
     GROUPS_NUMBER = driveConf.getint('GROUPS', 'number')

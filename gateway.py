@@ -25,7 +25,7 @@ def load(lst, start=0, length=16, group=1):
     
     MAX_READ_LENGTH = 16
     toRead = MAX_READ_LENGTH
-    if length > MAX_READ_LENGTH:
+    if length != MAX_READ_LENGTH:
         toRead = length
     
     param = 1

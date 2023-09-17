@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import configparser
+import datetime
 
 from asyncua import Server
 from pymodbus.client import ModbusSerialClient
@@ -72,6 +73,10 @@ async def main(client, descriptor):
     MAX_ITEM_GROUPS = config.getint('Gateway', 'max_item_groups')
 
     objects = server.nodes.objects
+
+    var = False
+    hb = await objects.add_variable('ns=2;s=hb', 'hb_var', var)
+
     GROUPS_NUMBER = driveConf.getint('GROUPS', 'number')
     node_list = [None]*GROUPS_NUMBER
     data_list = [[0] * MAX_ITEM_GROUPS] * GROUPS_NUMBER # groups x item (100), 6 * 100
@@ -83,7 +88,15 @@ async def main(client, descriptor):
 
     _logger.info("Starting server!")
     async with server:
+        b = True
         while True:
+            current_time = datetime.datetime.now()
+            yes = not(int(current_time.strftime("%S"))%2) # aggiorna ogni due secondi
+
+            if(yes):
+                hb.write_value(b)
+                b = not(b)
+
             # max = 600 # 6 group 
             for i in range(0, GROUPS_NUMBER):
                 data_list[i] = load(data_list[i], start=driveConf.getint('GROUP'+str(i+1), 'min')-1, length=driveConf.getint('GROUP'+str(i+1), 'max'), group=i+1)
